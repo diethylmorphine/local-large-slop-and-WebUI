@@ -14,4 +14,4 @@ python -m pip install \
     llama-cpp-python\>=0.3.8\,\<0.4.0
 python -m pip install --no-cache-dir -r "$requirements_without_llama"
 
-exec python app.py
+exec python cpu_limit.py

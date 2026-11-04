@@ -50,11 +50,11 @@ class AppConfig:
         if not 1 <= port <= 65535:
             raise ConfigurationError("PORT must be between 1 and 65535.")
 
-        filename = os.getenv("MODEL_FILENAME", "qwen2.5-3b-instruct-q4_k_m.gguf")
+        filename = os.getenv("MODEL_FILENAME", "Qwen3-8B-Q4_K_M.gguf")
         model_path = Path(os.getenv("MODEL_PATH", str(Path("models") / filename))).expanduser()
 
         return cls(
-            model_repo_id=os.getenv("MODEL_REPO_ID", "Qwen/Qwen2.5-3B-Instruct-GGUF"),
+            model_repo_id=os.getenv("MODEL_REPO_ID", "Qwen/Qwen3-8B-GGUF"),
             model_filename=filename,
             model_path=model_path,
             n_threads=n_threads,

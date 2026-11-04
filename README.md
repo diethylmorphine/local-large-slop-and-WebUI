@@ -2,14 +2,15 @@
 
 A lightweight, local chat interface powered by `llama.cpp` through
 `llama-cpp-python` and a Gradio web UI. The default configuration targets a
-4-vCPU, 8-GB-RAM CPU host and downloads the Qwen2.5 3B Q4_K_M GGUF on the first
-chat request.
+4-vCPU, 8-GB-RAM CPU host and downloads the Qwen3 8B Q4_K_M GGUF on the first
+chat request. The 5.03-GB model uses `/no_think` by default to keep routine
+responses concise and reduce CPU time.
 
 ## Requirements
 
 - Python 3.10 or newer
 - A 64-bit operating system
-- Enough free disk space for the GGUF model (about 2 GB)
+- Enough free disk space for the GGUF model (about 5.03 GB)
 - On systems without a compatible prebuilt `llama-cpp-python` wheel, a C/C++
   compiler and CMake to build its CPU backend
 
@@ -37,8 +38,9 @@ python -m pip install -r requirements.txt
 ```
 
 Copy `.env.example` to `.env` if you want to change the defaults. The default
-inference settings are deliberately fixed to `N_THREADS=4` and `N_CTX=4096`;
-the app rejects a thread count other than four. `MODEL_PATH` controls where the
+inference settings use four threads by default and a 4096-token context;
+`N_CTX` can be adjusted when needed, and the app rejects a thread count other
+than four. `MODEL_PATH` controls where the
 GGUF file is stored, while `HOST` and `PORT` configure the Gradio listener.
 Keep the default host (`127.0.0.1`) for local-only access.
 
@@ -60,7 +62,10 @@ app. It deliberately omits `llama-cpp-python` from the second pip install so
 pip cannot replace the CPU wheel with a PyPI build or fall back to compiling
 from source. It disables pip's download cache to reduce disk use. The script
 runs both pip installs every time it starts; pip leaves already-satisfied
-packages installed.
+packages installed. It launches the app through `cpu_limit.py`, which sets a
+395% cgroup CPU quota when the host permits it, with a process-monitor fallback
+for containers that do not expose a writable cgroup. Run `python app.py`
+directly when you do not want the Linux CPU limiter.
 
 The CPU wheel and its unpacked files, Gradio (whose wheel is about 64 MB),
 other dependencies, and temporary files still require free container storage.
@@ -76,12 +81,18 @@ Open the local URL printed by Gradio (by default
 sent, then kept loaded and reused for later turns. Closing the application
 releases the model and its context. Use the sidebar to adjust the system prompt,
 temperature, top-p, and maximum output length. The chat includes clear and
-regenerate controls, and each response has a copy button.
+regenerate controls, and each response has a copy button. Conversations are
+stored locally in `data/chats.sqlite3`, survive server restarts, and appear in
+the history panel. Search finds chats by their opening prompt and recent user
+messages. With cross-chat context enabled, the app adds short notes from up to
+two earlier conversations whose topics overlap with the current prompt.
 
 ## Model and memory notes
 
-The default Hugging Face repository is `Qwen/Qwen2.5-3B-Instruct-GGUF`, with
-`qwen2.5-3b-instruct-q4_k_m.gguf`. Hugging Face Hub uses its normal cache and
+The default Hugging Face repository is `Qwen/Qwen3-8B-GGUF`, with
+`Qwen3-8B-Q4_K_M.gguf`. Its Q4_K_M quantization is about 5.03 GB. At the
+configured 4096-token context, allow several additional GiB for the loaded
+model and runtime. Hugging Face Hub uses its normal cache and
 authentication settings; set `HF_TOKEN` in `.env` only if repository access
 requires it. Model availability and license terms are determined by the model
 publisher.
@@ -95,7 +106,7 @@ fails. This project does not start a separate API server: the Python process
 serves the Gradio UI and uses the llama.cpp Python binding directly.
 
 Before each generation, the app tokenizes the Qwen chat-formatted prompt with
-the loaded model, reserves `Max tokens` from the 4096-token window, and keeps
+the loaded model, reserves the selected output limit (up to 3072 tokens)\nfrom the 4096-token window, and keeps
 the system prompt, current user message, and newest complete conversation turns
 that fit. If the required system prompt and current message alone exceed the
 remaining context, the UI reports that they need to be shortened or the output
