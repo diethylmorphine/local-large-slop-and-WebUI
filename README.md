@@ -29,7 +29,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-Install dependencies and configure the app:
+For a standard installation, install dependencies and configure the app:
 
 ```bash
 python -m pip install --upgrade pip
@@ -47,6 +47,29 @@ Keep the default host (`127.0.0.1`) for local-only access.
 ```bash
 python app.py
 ```
+
+For Linux hosting or a Linux container, use the CPU-wheel startup script:
+
+```bash
+bash start.sh
+```
+
+`start.sh` installs a binary `llama-cpp-python` wheel from the official CPU
+wheel index before installing the remaining requirements, then launches the
+app. It deliberately omits `llama-cpp-python` from the second pip install so
+pip cannot replace the CPU wheel with a PyPI build or fall back to compiling
+from source. It disables pip's download cache to reduce disk use. The script
+runs both pip installs every time it starts; pip leaves already-satisfied
+packages installed.
+
+The CPU wheel and its unpacked files, Gradio (whose wheel is about 64 MB),
+other dependencies, and temporary files still require free container storage.
+`--no-cache-dir` avoids retaining an additional pip download cache; it cannot
+make an installation succeed when the container filesystem itself is full.
+If Pterodactyl reports `No space left on device`, check storage and inodes with
+`df -h` and `df -i` inside the container, then free or increase the server's
+allocated storage before restarting. Allow more space than the largest
+download because pip also needs room for unpacked packages and temporary files.
 
 Open the local URL printed by Gradio (by default
 `http://127.0.0.1:7860`). The model is downloaded when the first message is
